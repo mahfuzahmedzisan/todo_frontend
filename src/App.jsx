@@ -5,7 +5,7 @@ import { BrowserRouter, Route, Routes } from 'react-router'
 import { AuthProvider } from './context/AuthContext'
 import Login from './auth/Login'
 import Home from './pages/Home'
-import ProtectedRoute from './Routes/ProtectedRoute'
+import ProtectedRoute from './utils/ProtectedRoute'
 import Dashboard from './pages/Dashboard'
 import Header from './layouts/Header'
 
@@ -23,14 +23,9 @@ function App() {
           <Route path="/" element={<Home />} />
 
           {/* Protected route */}
-          <Route
-            path="/dashboard"
-            element={
-              <ProtectedRoute>
-                <Dashboard />
-              </ProtectedRoute>
-            }
-          />
+          <Route element={<ProtectedRoute />}>
+            <Route path="/dashboard" element={<Dashboard />} />
+          </Route>
         </Routes>
       </AuthProvider>
     </BrowserRouter>
