@@ -1,12 +1,13 @@
 import React from 'react';
-import { Link } from 'react-router';
-import { useAuth } from '../context/AuthContext';
+import { Link } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext.jsx';
 
-export default function Header() {
+// The main navigation header component.
+const Header = () => {
     const { isAuthenticated, logout } = useAuth();
 
     return (
-        <header className="bg-rose-50/50 text-gray-800 p-4 fixed w-full backdrop-blur-md z-50">
+        <header className="bg-rose-50/50 text-gray-800 p-4 fixed w-full backdrop-blur-md z-50 shadow-md">
             <div className='container mx-auto flex justify-between items-center'>
                 <Link to="/" className="text-2xl font-bold">
                     My App
@@ -23,7 +24,7 @@ export default function Header() {
                                 <li>
                                     <button
                                         onClick={logout}
-                                        className="text-gray-800 hover:text-gray-600 font-semibold py-2 px-4 rounded bg-red-100 hover:bg-red-200 transition-colors duration-200"
+                                        className="text-gray-800 hover:text-gray-600 font-semibold py-2 px-4 rounded-lg shadow-md bg-red-100 hover:bg-red-200 transition-colors duration-200"
                                     >
                                         Logout
                                     </button>
@@ -31,7 +32,7 @@ export default function Header() {
                             </>
                         ) : (
                             <li>
-                                <Link to="/login" className="text-gray-800 hover:text-gray-600">
+                                <Link to="/login" className="text-gray-800 hover:text-gray-600 font-semibold py-2 px-4 rounded-lg shadow-md hover:bg-gray-200 transition-colors duration-200">
                                     Login
                                 </Link>
                             </li>
@@ -41,4 +42,6 @@ export default function Header() {
             </div>
         </header>
     );
-}
+};
+
+export default Header;
