@@ -1,42 +1,37 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import { BrowserRouter, Route, Routes } from 'react-router'
-import { AuthProvider } from './context/AuthContext'
-import Login from './auth/Login'
-import Home from './pages/Home'
-import ProtectedRoute from './utils/ProtectedRoute'
-import Dashboard from './pages/Dashboard'
-import Header from './layouts/Header'
+import React from 'react';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 
+import { AuthProvider } from './context/AuthContext.jsx';
+import ProtectedRoute from './components/ProtectedRoute.jsx';
+import Header from './components/Header.jsx';
 
-function App() {
+import WelcomePage from './pages/Welcome.jsx';
+import LoginPage from './pages/Login.jsx';
+import RegisterPage from './pages/Register.jsx';
+import UsersPage from './pages/Users.jsx';
+import TodosPage from './pages/Todos.jsx';
 
+const App = () => {
   return (
+    <div className="bg-gray-100 min-h-screen font-inter">
+      <BrowserRouter>
+        <AuthProvider>
+          <Header />
+          <Routes>
+            {/* Public routes */}
+            <Route path="/" element={<WelcomePage />} />
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/register" element={<RegisterPage />} />
 
-    <BrowserRouter>
-      <AuthProvider>
-        <Header />
-        <Routes>
-          {/* Public routes */}
-          <Route path="/login" element={<Login />} />
-          <Route path="/" element={<Home />} />
+            {/* Protected routes */}
+            <Route path="/users" element={<ProtectedRoute><UsersPage /></ProtectedRoute>} />
+            <Route path="/todos" element={<ProtectedRoute><TodosPage /></ProtectedRoute>} />
+            <Route path="*" element={<Navigate to="/" />} />
+          </Routes>
+        </AuthProvider>
+      </BrowserRouter>
+    </div>
+  );
+};
 
-          {/* Protected route */}
-          <Route element={<ProtectedRoute />}>
-            <Route path="/dashboard" element={<Dashboard />} />
-          </Route>
-        </Routes>
-      </AuthProvider>
-    </BrowserRouter>
-
-    // <>
-    //   <div className='flex flex-col items-center justify-center min-h-screen bg-gray-100'>
-    //     <h1 className='text-4xl font-bold mb-4'>Welcome to My App</h1>
-    //     <p className='text-lg'>Get started here</p>
-    //   </div>
-    // </>
-  )
-}
-
-export default App
+export default App;
