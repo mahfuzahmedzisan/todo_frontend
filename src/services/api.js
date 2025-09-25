@@ -1,129 +1,169 @@
-import axios from "axios"
-import { API_CONFIG, API_ENDPOINTS, SECURITY_HEADERS } from "../config/api.js"
-import { secureStorage } from "../utils/storage.js"
-import { generateCSRFToken } from "../utils/helpers.js"
+// services/api.js - Fixed version
+import axios from 'axios'
+import { secureStorage } from '../utils/storage.js'
+import { API_CONFIG, API_ENDPOINTS, SECURITY_HEADERS } from '../config/api.js'
+import { securityMiddleware } from '../utils/security.js'
 
-// Create axios instance with default configuration
+// Create axios instance
 const apiClient = axios.create({
   baseURL: API_CONFIG.BASE_URL,
   timeout: API_CONFIG.TIMEOUT,
-  headers: SECURITY_HEADERS,
-  withCredentials: true, // Important for CSRF protection
+  withCredentials: true, // Set to true since you're using supports_credentials: true
+  headers: {
+    ...SECURITY_HEADERS,
+    'Content-Type': 'application/json',
+    'Accept': 'application/json',
+  }
 })
 
-// CSRF Token management
-let csrfToken = generateCSRFToken()
-
-// Request interceptor for authentication and security
+// Request interceptor
 apiClient.interceptors.request.use(
   (config) => {
-    // Add CSRF token to headers
-    config.headers["X-CSRF-TOKEN"] = csrfToken
-
     // Add auth token if available
-    const token = secureStorage.getItem("auth_token")
+    const token = secureStorage.getItem('auth_token')
     if (token) {
       config.headers.Authorization = `Bearer ${token}`
     }
 
-    // Add timestamp to prevent caching sensitive requests
-    if (["post", "put", "patch", "delete"].includes(config.method)) {
-      config.headers["X-Timestamp"] = Date.now()
+    // Add security headers
+    config = securityMiddleware.addSecurityHeaders(config)
+
+    // Sanitize request data
+    if (config.data) {
+      config.data = securityMiddleware.sanitizeRequestData(config.data)
     }
 
+    // console.log('API Request:', config.method?.toUpperCase(), config.url)
     return config
   },
   (error) => {
+    console.error('Request interceptor error:', error)
     return Promise.reject(error)
-  },
+  }
 )
 
-// Response interceptor for error handling and token refresh
+// Response interceptor
 apiClient.interceptors.response.use(
   (response) => {
-    // Update CSRF token if provided in response
-    const newCsrfToken = response.headers["x-csrf-token"]
-    if (newCsrfToken) {
-      csrfToken = newCsrfToken
-    }
-
+    console.log('API Response:', response.status, response.config.url)
     return response
   },
   async (error) => {
+    console.error('API Error:', error.response?.status, error.config?.url, error.response?.data)
+    
     const originalRequest = error.config
 
-    // Handle 401 Unauthorized
-    if (error.response?.status === 401 && !originalRequest._retry) {
+    // Handle 401 errors (unauthorized) - but NOT for logout/refresh requests
+    if (error.response?.status === 401 && 
+        !originalRequest._retry && 
+        !originalRequest.url.includes('/logout') &&
+        !originalRequest.url.includes('/refresh')) {
+      
       originalRequest._retry = true
 
-      // Clear stored auth data
-      secureStorage.removeItem("auth_token")
-      secureStorage.removeItem("user_data")
-
-      // Redirect to login
-      window.location.href = "/login"
-      return Promise.reject(error)
-    }
-
-    // Handle 403 Forbidden (CSRF token mismatch)
-    if (error.response?.status === 403) {
-      csrfToken = generateCSRFToken()
-    }
-
-    // Handle network errors with retry logic
-    if (!error.response && originalRequest._retryCount < API_CONFIG.RETRY_ATTEMPTS) {
-      originalRequest._retryCount = (originalRequest._retryCount || 0) + 1
-
-      await new Promise((resolve) => setTimeout(resolve, API_CONFIG.RETRY_DELAY * originalRequest._retryCount))
-
-      return apiClient(originalRequest)
+      try {
+        // Only try to refresh if we have a token
+        if (secureStorage.hasToken()) {
+          const refreshResponse = await apiClient.post(API_ENDPOINTS.AUTH.REFRESH)
+          
+          if (refreshResponse.data.success) {
+            const newToken = refreshResponse.data.token
+            secureStorage.setItem('auth_token', newToken)
+            
+            // Retry original request with new token
+            originalRequest.headers.Authorization = `Bearer ${newToken}`
+            return apiClient(originalRequest)
+          }
+        }
+      } catch (refreshError) {
+        console.error('Token refresh failed:', refreshError)
+        // Clear storage but don't redirect here - let the calling component handle it
+        secureStorage.clear()
+      }
     }
 
     return Promise.reject(error)
-  },
+  }
 )
 
-// Authentication API methods
+// Auth API methods
 export const authAPI = {
   login: async (credentials) => {
     try {
       const response = await apiClient.post(API_ENDPOINTS.AUTH.LOGIN, credentials)
-
-      if (response.data.success && response.data.data.token) {
-        // Store token and user data securely
-        secureStorage.setItem("auth_token", response.data.data.token)
-        secureStorage.setItem("user_data", response.data.data.user)
-        secureStorage.setItem("token_type", response.data.data.token_type)
+      
+      if (response.data.success) {
+        // console.log('Login response data:', response.data)
+        
+        // Check what token we're getting
+        const token = response.data.token || response.data.data?.token
+        const user = response.data.user || response.data.data?.user
+        
+        // console.log('Token to store:', token)
+        // console.log('User to store:', user)
+        
+        // Store token and user data
+        if (token) {
+          secureStorage.setItem('auth_token', token)
+          // console.log('Token stored successfully')
+        }
+        
+        if (user) {
+          secureStorage.setItem('user_data', user)
+          // console.log('User data stored successfully')
+        }
       }
-
-      return response.data
+      
+      return {
+        success: true,
+        data: response.data
+      }
     } catch (error) {
-      throw new Error(error.response?.data?.message || "Login failed")
+      const message = error.response?.data?.message || error.message || 'Login failed'
+      return {
+        success: false,
+        message,
+        error: message
+      }
     }
   },
 
   register: async (userData) => {
     try {
       const response = await apiClient.post(API_ENDPOINTS.AUTH.REGISTER, userData)
-
-      if (response.data.success && response.data.data.token) {
-        // Store token and user data securely
-        secureStorage.setItem("auth_token", response.data.data.token)
-        secureStorage.setItem("user_data", response.data.data.user)
-        secureStorage.setItem("token_type", response.data.data.token_type)
+      
+      if (response.data.success) {
+        // Store token and user data
+        secureStorage.setItem('auth_token', response.data.token)
+        secureStorage.setItem('user_data', response.data.user)
       }
-
-      return response.data
+      
+      return {
+        success: true,
+        data: response.data
+      }
     } catch (error) {
-      throw new Error(error.response?.data?.message || "Registration failed")
+      const message = error.response?.data?.message || error.message || 'Registration failed'
+      return {
+        success: false,
+        message,
+        error: message
+      }
     }
   },
 
   logout: async () => {
     try {
-      await apiClient.post(API_ENDPOINTS.AUTH.LOGOUT)
+      // Only try to call logout API if we have a valid token
+      if (secureStorage.hasToken()) {
+        const response = await apiClient.post(API_ENDPOINTS.AUTH.LOGOUT)
+      }
+      return { success: true }
     } catch (error) {
-      console.error("Logout API call failed:", error)
+      console.error('Logout API error:', error)
+      // Don't throw error for logout - always succeed locally
+      // return { success: true }
+      throw new Error('Logout failed')
     } finally {
       // Always clear local storage regardless of API response
       secureStorage.clear()
@@ -133,36 +173,36 @@ export const authAPI = {
   getProfile: async () => {
     try {
       const response = await apiClient.get(API_ENDPOINTS.AUTH.PROFILE)
-      return response.data
+      return {
+        success: true,
+        data: response.data
+      }
     } catch (error) {
-      throw new Error(error.response?.data?.message || "Failed to fetch profile")
+      const message = error.response?.data?.message || error.message || 'Failed to get profile'
+      return {
+        success: false,
+        message,
+        error: message
+      }
     }
   },
 
   refreshToken: async () => {
     try {
       const response = await apiClient.post(API_ENDPOINTS.AUTH.REFRESH)
-
-      if (response.data.success && response.data.data.token) {
-        secureStorage.setItem("auth_token", response.data.data.token)
-        return response.data.data.token
+      const newToken = response.data.token
+      
+      if (newToken) {
+        secureStorage.setItem('auth_token', newToken)
+        return newToken
       }
-
-      throw new Error("Token refresh failed")
+      
+      throw new Error('No token in refresh response')
     } catch (error) {
-      secureStorage.clear()
+      console.error('Token refresh failed:', error)
       throw error
     }
-  },
-}
-
-// Generic API methods
-export const api = {
-  get: (url, config = {}) => apiClient.get(url, config),
-  post: (url, data, config = {}) => apiClient.post(url, data, config),
-  put: (url, data, config = {}) => apiClient.put(url, data, config),
-  patch: (url, data, config = {}) => apiClient.patch(url, data, config),
-  delete: (url, config = {}) => apiClient.delete(url, config),
+  }
 }
 
 export default apiClient

@@ -1,3 +1,4 @@
+// components/layout/Header.jsx - Fixed version
 "use client"
 
 import { useState, useRef, useEffect } from "react"
@@ -6,8 +7,9 @@ import { useAuth } from "../../contexts/AuthContext.jsx"
 import Button from "../ui/Button.jsx"
 
 const Header = () => {
-  const { user, logout, isAuthenticated, getUserInitials } = useAuth()
+  const { user, logout, isAuthenticated, getUserInitials, isLoading } = useAuth()
   const [isDropdownOpen, setIsDropdownOpen] = useState(false)
+  const [isLoggingOut, setIsLoggingOut] = useState(false)
   const dropdownRef = useRef(null)
   const navigate = useNavigate()
 
@@ -24,9 +26,22 @@ const Header = () => {
   }, [])
 
   const handleLogout = async () => {
-    await logout()
-    navigate("/")
+    if (isLoggingOut) return // Prevent multiple logout attempts
+
+    setIsLoggingOut(true)
     setIsDropdownOpen(false)
+
+    try {
+      await logout()
+      // Use React Router navigation instead of window.location
+      navigate("/", { replace: true })
+    } catch (error) {
+      console.error("Logout error:", error)
+      // Still navigate even if logout fails
+      navigate("/", { replace: true })
+    } finally {
+      setIsLoggingOut(false)
+    }
   }
 
   return (
@@ -85,7 +100,8 @@ const Header = () => {
               <div className="relative" ref={dropdownRef}>
                 <button
                   onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                  className="flex items-center space-x-2 p-2 rounded-lg hover:bg-muted transition-colors"
+                  disabled={isLoading}
+                  className="flex items-center space-x-2 p-2 rounded-lg hover:bg-muted transition-colors disabled:opacity-50"
                 >
                   <div className="h-8 w-8 bg-primary rounded-full flex items-center justify-center">
                     <span className="text-sm font-medium text-primary-foreground">{getUserInitials()}</span>
@@ -137,9 +153,10 @@ const Header = () => {
                     <div className="border-t border-border mt-1">
                       <button
                         onClick={handleLogout}
-                        className="block w-full text-left px-4 py-2 text-sm text-destructive hover:bg-muted transition-colors"
+                        disabled={isLoggingOut}
+                        className="block w-full text-left px-4 py-2 text-sm text-destructive hover:bg-muted transition-colors disabled:opacity-50"
                       >
-                        Sign Out
+                        {isLoggingOut ? "Signing Out..." : "Sign Out"}
                       </button>
                     </div>
                   </div>

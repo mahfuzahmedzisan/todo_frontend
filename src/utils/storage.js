@@ -1,4 +1,4 @@
-// Secure local storage utilities
+// utils/storage.js - Fixed version
 class SecureStorage {
   constructor() {
     this.prefix = "ecommerce_"
@@ -15,10 +15,27 @@ class SecureStorage {
     }
   }
 
-  // Simple decryption
+  // Simple decryption with better error handling
   decrypt(encryptedData) {
     try {
-      return JSON.parse(atob(encryptedData))
+      // Check if encryptedData is valid - handle both actual values and string representations
+      if (!encryptedData || 
+          encryptedData === 'undefined' || 
+          encryptedData === 'null' || 
+          encryptedData === undefined || 
+          encryptedData === null ||
+          typeof encryptedData !== 'string' ||
+          encryptedData.trim() === '') {
+        return null
+      }
+      
+      // Additional check for base64 validity
+      const decoded = atob(encryptedData)
+      if (!decoded || decoded === 'undefined' || decoded === 'null') {
+        return null
+      }
+      
+      return JSON.parse(decoded)
     } catch (error) {
       console.error("Decryption failed:", error)
       return null
@@ -42,10 +59,19 @@ class SecureStorage {
   getItem(key) {
     try {
       const encryptedValue = localStorage.getItem(this.prefix + key)
-      if (encryptedValue) {
-        return this.decrypt(encryptedValue)
+      
+      // Return null if no value exists or value is invalid
+      if (!encryptedValue || 
+          encryptedValue === 'undefined' || 
+          encryptedValue === 'null' || 
+          encryptedValue === undefined || 
+          encryptedValue === null ||
+          typeof encryptedValue !== 'string' ||
+          encryptedValue.trim() === '') {
+        return null
       }
-      return null
+      
+      return this.decrypt(encryptedValue)
     } catch (error) {
       console.error("Storage get failed:", error)
       return null
@@ -74,6 +100,31 @@ class SecureStorage {
     } catch (error) {
       console.error("Storage clear failed:", error)
       return false
+    }
+  }
+
+  // Helper method to check if token exists
+  hasToken() {
+    const token = this.getItem('auth_token')
+    // console.log('hasToken check:', { token, hasToken: token !== null && token !== undefined && token !== '' })
+    return token !== null && token !== undefined && token !== ''
+  }
+
+  // Method to clean up corrupted storage
+  cleanupCorruptedData() {
+    try {
+      const keys = Object.keys(localStorage)
+      keys.forEach((key) => {
+        if (key.startsWith(this.prefix)) {
+          const value = localStorage.getItem(key)
+          if (value === 'undefined' || value === 'null' || value === '' || value === null) {
+            localStorage.removeItem(key)
+            console.log(`Removed corrupted storage key: ${key}`)
+          }
+        }
+      })
+    } catch (error) {
+      console.error("Cleanup failed:", error)
     }
   }
 }

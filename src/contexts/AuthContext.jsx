@@ -120,8 +120,11 @@ export const AuthProvider = ({ children }) => {
     try {
       dispatch({ type: AUTH_ACTIONS.SET_LOADING })
 
-      const token = secureStorage.getItem("auth_token")
-      const userData = secureStorage.getItem("user_data")
+      // Clean up any corrupted storage first
+      secureStorage.cleanupCorruptedData()
+
+      const token = secureStorage.getItem('auth_token')
+      const userData = secureStorage.getItem('user_data')
 
       if (token && userData) {
         // Verify token is still valid by fetching user profile
@@ -147,6 +150,8 @@ export const AuthProvider = ({ children }) => {
       dispatch({ type: AUTH_ACTIONS.SET_UNAUTHENTICATED })
     } catch (error) {
       console.error("Auth initialization failed:", error)
+      // Clear potentially corrupted storage
+      secureStorage.clear()
       dispatch({
         type: AUTH_ACTIONS.SET_ERROR,
         payload: "Failed to initialize authentication",
@@ -156,12 +161,12 @@ export const AuthProvider = ({ children }) => {
 
   const login = async (credentials) => {
     try {
-      console.log("Login credentials:", credentials)
+      // console.log("Login credentials:", credentials)
       dispatch({ type: AUTH_ACTIONS.SET_LOADING })
       dispatch({ type: AUTH_ACTIONS.CLEAR_ERROR })
 
       const response = await authAPI.login(credentials)
-      console.log("Login response:", response)
+      // console.log("Login response:", response)
 
 
       if (response.success) {
@@ -217,12 +222,27 @@ export const AuthProvider = ({ children }) => {
     }
   }
 
+  // const logout = async () => {
+  //   try {
+  //     dispatch({ type: AUTH_ACTIONS.SET_LOADING })
+
+  //     // Call logout API
+  //     await authAPI.logout()
+  //   } catch (error) {
+  //     console.error("Logout failed:", error)
+  //   } finally {
+  //     // Always clear state regardless of API response
+  //     dispatch({ type: AUTH_ACTIONS.SET_UNAUTHENTICATED })
+  //   }
+  // }
+
   const logout = async () => {
     try {
+      console.log("Logging out...")
       dispatch({ type: AUTH_ACTIONS.SET_LOADING })
-
-      // Call logout API
+      // Call logout API (this will always succeed now)
       await authAPI.logout()
+      return { success: true }
     } catch (error) {
       console.error("Logout failed:", error)
     } finally {

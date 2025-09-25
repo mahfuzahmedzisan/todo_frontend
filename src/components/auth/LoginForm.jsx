@@ -70,7 +70,7 @@ const LoginForm = () => {
 
         try {
             const result = await login(formData)
-            console.log("Login result:", result)    
+            // console.log("Login result:", result)    
 
             if (result.success) {
                 // Redirect to intended page or dashboard
