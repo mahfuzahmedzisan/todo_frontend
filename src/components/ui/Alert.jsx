@@ -1,5 +1,3 @@
-"use client"
-
 const Alert = ({ children, variant = "default", className = "", onClose }) => {
   const baseClasses = "relative w-full rounded-lg border p-4"
 

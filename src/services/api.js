@@ -1,6 +1,6 @@
 // services/api.js - Fixed version
 import axios from 'axios'
-import { secureStorage } from '../utils/storage.js'
+import { encryptedStorage } from '../utils/storage.js'
 import { API_CONFIG, API_ENDPOINTS, SECURITY_HEADERS } from '../config/api.js'
 import { securityMiddleware } from '../utils/security.js'
 
@@ -20,7 +20,7 @@ const apiClient = axios.create({
 apiClient.interceptors.request.use(
   (config) => {
     // Add auth token if available
-    const token = secureStorage.getItem('auth_token')
+    const token = encryptedStorage.getItem('auth_token')
     if (token) {
       config.headers.Authorization = `Bearer ${token}`
     }
@@ -63,12 +63,12 @@ apiClient.interceptors.response.use(
 
       try {
         // Only try to refresh if we have a token
-        if (secureStorage.hasToken()) {
+        if (encryptedStorage.hasToken()) {
           const refreshResponse = await apiClient.post(API_ENDPOINTS.AUTH.REFRESH)
           
           if (refreshResponse.data.success) {
             const newToken = refreshResponse.data.token
-            secureStorage.setItem('auth_token', newToken)
+            encryptedStorage.setItem('auth_token', newToken)
             
             // Retry original request with new token
             originalRequest.headers.Authorization = `Bearer ${newToken}`
@@ -78,7 +78,7 @@ apiClient.interceptors.response.use(
       } catch (refreshError) {
         console.error('Token refresh failed:', refreshError)
         // Clear storage but don't redirect here - let the calling component handle it
-        secureStorage.clear()
+        encryptedStorage.clear()
       }
     }
 
@@ -104,12 +104,12 @@ export const authAPI = {
         
         // Store token and user data
         if (token) {
-          secureStorage.setItem('auth_token', token)
+          encryptedStorage.setItem('auth_token', token)
           // console.log('Token stored successfully')
         }
         
         if (user) {
-          secureStorage.setItem('user_data', user)
+          encryptedStorage.setItem('user_data', user)
           // console.log('User data stored successfully')
         }
       }
@@ -134,8 +134,8 @@ export const authAPI = {
       
       if (response.data.success) {
         // Store token and user data
-        secureStorage.setItem('auth_token', response.data.token)
-        secureStorage.setItem('user_data', response.data.user)
+        encryptedStorage.setItem('auth_token', response.data.token)
+        encryptedStorage.setItem('user_data', response.data.user)
       }
       
       return {
@@ -155,7 +155,7 @@ export const authAPI = {
   logout: async () => {
     try {
       // Only try to call logout API if we have a valid token
-      if (secureStorage.hasToken()) {
+      if (encryptedStorage.hasToken()) {
         const response = await apiClient.post(API_ENDPOINTS.AUTH.LOGOUT)
       }
       return { success: true }
@@ -166,7 +166,7 @@ export const authAPI = {
       throw new Error('Logout failed')
     } finally {
       // Always clear local storage regardless of API response
-      secureStorage.clear()
+      encryptedStorage.clear()
     }
   },
 
@@ -193,7 +193,7 @@ export const authAPI = {
       const newToken = response.data.token
       
       if (newToken) {
-        secureStorage.setItem('auth_token', newToken)
+        encryptedStorage.setItem('auth_token', newToken)
         return newToken
       }
       

@@ -1,5 +1,3 @@
-"use client"
-
 import { useState, useEffect } from "react"
 import { Link, useNavigate } from "react-router-dom"
 import { useAuth } from "../../contexts/AuthContext.jsx"
@@ -129,7 +127,7 @@ const RegisterForm = () => {
 
   return (
     <div className="w-full max-w-md mx-auto">
-      <div className="bg-background border border-border rounded-lg shadow-lg p-6">
+      <div className="bg-white shadow-md rounded px-8 pt-6 pb-8 mb-4">
         <div className="text-center mb-6">
           <h1 className="text-2xl font-bold text-foreground">Create Account</h1>
           <p className="text-muted-foreground mt-2">Sign up to get started</p>
