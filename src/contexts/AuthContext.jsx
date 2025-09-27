@@ -79,10 +79,24 @@ export const AuthProvider = ({ children }) => {
     initializeAuth();
   }, []);
 
+  // Auto-refresh token before expiration
+  // useEffect(() => {
+  //   if (state.isAuthenticated && state.token) {
+  //     const refreshInterval = setInterval(
+  //       () => {
+  //         refreshAuthToken()
+  //       },
+  //       15 * 60 * 1000,
+  //     ) // Refresh every 15 minutes
+
+  //     return () => clearInterval(refreshInterval)
+  //   }
+  // }, [state.isAuthenticated, state.token])
+
   const initializeAuth = async () => {
     try {
       dispatch({ type: 'SET_LOADING', payload: true });
-      
+
       // Initialize storage
       storageUtils.initStorage();
 
@@ -105,7 +119,7 @@ export const AuthProvider = ({ children }) => {
           dispatch({ type: 'LOGOUT' });
         }
         */
-        
+
         // For now, just restore from storage
         dispatch({
           type: 'RESTORE_SESSION',
@@ -201,6 +215,22 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  const refreshAuthToken = async () => {
+    try {
+      const newToken = await authAPI.refreshToken()
+      dispatch({
+        type: AUTH_ACTIONS.SET_AUTHENTICATED,
+        payload: {
+          user: state.user,
+          token: newToken,
+        },
+      })
+    } catch (error) {
+      console.error("Token refresh failed:", error)
+      logout()
+    }
+  }
+
   const clearError = () => {
     dispatch({ type: 'CLEAR_ERROR' });
   };
@@ -226,6 +256,11 @@ export const AuthProvider = ({ children }) => {
     logout,
     clearError,
     checkAuthStatus,
+
+    // Utility functions
+    isAdmin: () => state.user?.is_admin || false,
+    isVerified: () => state.user?.is_verified || false,
+    getUserInitials: () => state.user?.initials || state.user?.name?.charAt(0) || "U",
   };
 
   return (
