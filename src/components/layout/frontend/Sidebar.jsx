@@ -11,9 +11,8 @@ export default function Sidebar({ isSidebarOpen, toggleSidebar }) {
                 <div className='p-4 w-full max-w-64 bg-rose-50 rounded-lg shadow h-full ml-auto'>
                     <div className='flex items-center justify-between mb-4'>
                         <Link to='/' className='items-center justify-start inline-flex'>
-                            {/* E text in svg */}
                             <svg className="w-10 h-10 bg-orange-600 rounded-lg flex items-center justify-center text-white mr-2" width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                                <text x="12" y="17" font-size="15" text-anchor="middle">E</text>
+                                <text x="12" y="17" fontSize="15" textAnchor="middle">E</text>
                             </svg>
                         </Link>
                         <Button onClick={toggleSidebar}>
@@ -29,7 +28,15 @@ export default function Sidebar({ isSidebarOpen, toggleSidebar }) {
                             </Link>
                             {isAuthenticated ? (
                                 <>
-
+                                    <Link to={'/profile'} className='block py-2 px-4 text-sm text-gray-700 hover:bg-gray-100 rounded-lg'>
+                                        Profile
+                                    </Link>
+                                    <Link to={'/dashboard'} className='block py-2 px-4 text-sm text-gray-700 hover:bg-gray-100 rounded-lg'>
+                                        Dashboard
+                                    </Link>
+                                    <button onClick={logout} className='block py-2 px-4 text-sm text-gray-700 hover:bg-gray-100 rounded-lg'>
+                                        Logout
+                                    </button>
                                 </>
                             ) : (
                                 <>

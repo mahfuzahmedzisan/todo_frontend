@@ -8,6 +8,7 @@ const NetworkStatus = () => {
   if (isOnline && !networkError) {
     return null
   }
+  console.log('Network error:', networkError)
 
   return (
     <div className="fixed top-0 left-0 right-0 z-50">

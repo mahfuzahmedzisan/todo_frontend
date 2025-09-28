@@ -1,9 +1,10 @@
 // API Configuration
 export const API_CONFIG = {
-  BASE_URL: "http://127.0.0.1:8000/api/v1",
-  TIMEOUT: 10000,
-  RETRY_ATTEMPTS: 3,
-  RETRY_DELAY: 1000,
+  // Use VITE_API_BASE_URL from .env file
+  BASE_URL: import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8000/api/v1", 
+  TIMEOUT: import.meta.env.VITE_API_TIMEOUT || 30000,
+  RETRY_ATTEMPTS: import.meta.env.VITE_API_RETRY_ATTEMPTS || 3,
+  RETRY_DELAY: import.meta.env.VITE_API_RETRY_DELAY || 1000,
 }
 
 // API Endpoints

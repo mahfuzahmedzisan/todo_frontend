@@ -71,7 +71,7 @@ export const useNetworkErrorHandler = () => {
   const [isOnline, setIsOnline] = useState(navigator.onLine)
   const [networkError, setNetworkError] = useState(null)
 
-  const handleNetworkError = useCallback((error) => {
+  const handleNetworkError = useCallback((error) => { 
     if (!navigator.onLine) {
       setNetworkError("You are currently offline. Please check your internet connection.")
     } else if (error.code === "NETWORK_ERROR") {

@@ -14,12 +14,14 @@ export default function FrontendLayout({ children }) {
 
     return (
         <>
-            <Header isSidebarOpen={isSidebarOpen} toggleSidebar={toggleSidebar} />
-            <Sidebar isSidebarOpen={isSidebarOpen} toggleSidebar={toggleSidebar} />
-            <main>
-                {children}
-            </main>
-            <Footer />
+            <div className={`h-screen flex flex-col`}>
+                <Header isSidebarOpen={isSidebarOpen} toggleSidebar={toggleSidebar} />
+                <Sidebar isSidebarOpen={isSidebarOpen} toggleSidebar={toggleSidebar} />
+                <main className={`flex-1`}>
+                    {children}
+                </main>
+                <Footer />
+            </div>
         </>
     )
 }

@@ -2,7 +2,7 @@ import { useState } from 'react'
 import reactLogo from './assets/react.svg'
 import viteLogo from '/vite.svg'
 import { BrowserRouter, Route, Routes, Navigate } from 'react-router'
-import { AuthProvider } from './contexts/AuthContext'
+import { AuthProvider, useAuth } from './contexts/AuthContext'
 import PublicRoute from './components/PublicRoute'
 import ProtectedRoute from './components/ProtectedRoute'
 import ErrorBoundary from "./components/common/ErrorBoundary"
@@ -11,14 +11,15 @@ import RouteGuard from "./components/routing/RouteGuard"
 
 // pages
 import Home from './pages/frontend/Home'
-import Login from './pages/Login'
+import Login from './pages/auth/Login'
 import Register from './pages/Register'
 import DashboardPage from './pages/DashboardPage'
 import UnauthorizedPage from './pages/UnauthorizedPage'
 import NotFoundPage from './pages/NotFoundPage'
-function App() {
-  const [count, setCount] = useState(0)
-
+function App() { 
+  // if (loading) {
+  //   return <div>Loading...</div>
+  // }
   return (
     <>
       <ErrorBoundary>

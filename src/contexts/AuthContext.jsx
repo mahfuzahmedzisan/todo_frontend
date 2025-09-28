@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useReducer } from 'react';
 import { encryptedStorage, storageUtils } from '../utils/storage';
-import apiService from '../services/apiService';
+import authAPI from '../services/apiService'; // Renamed import for clarity
 
 const AuthContext = createContext();
 
@@ -29,6 +29,7 @@ const authReducer = (state, action) => {
         isAuthenticated: false,
         user: null,
         token: null,
+        // This payload receives the user-friendly message from ApiService.js
         error: action.payload,
       };
     case 'LOGOUT':
@@ -49,187 +50,105 @@ const authReducer = (state, action) => {
         token: action.payload.token,
       };
     case 'SET_LOADING':
-      return {
-        ...state,
-        loading: action.payload,
-      };
+      return { ...state, loading: action.payload };
+    case 'SET_AUTHENTICATED':
+      return { ...state, isAuthenticated: true, user: action.payload.user, token: action.payload.token };
     case 'CLEAR_ERROR':
-      return {
-        ...state,
-        error: null,
-      };
+      return { ...state, error: null };
     default:
       return state;
   }
 };
 
 const initialState = {
-  user: null,
-  token: null,
   isAuthenticated: false,
-  loading: true,
+  user: encryptedStorage.getUser() || null,
+  token: encryptedStorage.getToken() || null,
+  loading: false,
   error: null,
 };
 
 export const AuthProvider = ({ children }) => {
+
   const [state, dispatch] = useReducer(authReducer, initialState);
 
-  // Initialize auth state on app load
-  useEffect(() => {
-    initializeAuth();
-  }, []);
+  // Function to initialize the session from local storage
+  const initializeSession = () => {
+    const user = encryptedStorage.getUser();
+    const token = encryptedStorage.getToken();
 
-  // Auto-refresh token before expiration
-  // useEffect(() => {
-  //   if (state.isAuthenticated && state.token) {
-  //     const refreshInterval = setInterval(
-  //       () => {
-  //         refreshAuthToken()
-  //       },
-  //       15 * 60 * 1000,
-  //     ) // Refresh every 15 minutes
-
-  //     return () => clearInterval(refreshInterval)
-  //   }
-  // }, [state.isAuthenticated, state.token])
-
-  const initializeAuth = async () => {
-    try {
-      dispatch({ type: 'SET_LOADING', payload: true });
-
-      // Initialize storage
-      storageUtils.initStorage();
-
-      // Check for existing session
-      const token = encryptedStorage.getToken();
-      const user = encryptedStorage.getUser();
-
-      if (token && user) {
-        // Optional: Verify token with server (commented as requested)
-        /*
-        const verifyResult = await apiService.verifyToken();
-        if (verifyResult.success) {
-          dispatch({
-            type: 'RESTORE_SESSION',
-            payload: { user, token },
-          });
-        } else {
-          // Token is invalid, clear storage
-          encryptedStorage.clearAll();
-          dispatch({ type: 'LOGOUT' });
-        }
-        */
-
-        // For now, just restore from storage
-        dispatch({
-          type: 'RESTORE_SESSION',
-          payload: { user, token },
-        });
-      } else {
-        dispatch({ type: 'SET_LOADING', payload: false });
-      }
-    } catch (error) {
-      console.error('Auth initialization error:', error);
-      dispatch({ type: 'SET_LOADING', payload: false });
+    if (user && token) {
+      dispatch({
+        type: 'RESTORE_SESSION',
+        payload: { user, token },
+      });
     }
   };
 
+  useEffect(() => {
+    initializeSession();
+  }, []); // Run only once on mount
+
+  const logout = async () => {
+    // Clear storage first
+    encryptedStorage.clear();
+    sessionStorage.clear();
+
+    // Update state
+    dispatch({ type: 'LOGOUT' });
+  };
+
   const login = async (credentials) => {
-    try {
-      dispatch({ type: 'LOGIN_START' });
+    dispatch({ type: 'LOGIN_START' });
 
-      const result = await apiService.login(credentials);
+    // The call will now fail fast (10s) and return a clear error object on network issues
+    const result = await authAPI.login(credentials);
 
-      if (result.success && result.data.success) {
-        const { user, token } = result.data.data;
+    if (result.success) {
+      // Success path
+      encryptedStorage.setToken(result.data.token);
+      encryptedStorage.setUser(result.data.user);
 
-        // Store encrypted data
-        encryptedStorage.setToken(token, { expires: 7 });
-        encryptedStorage.setUser(user, { expires: 7 });
+      dispatch({
+        type: 'LOGIN_SUCCESS',
+        payload: {
+          user: result.data.user,
+          token: result.data.token,
+        },
+      });
+      return { success: true };
+    } else {
+      // Failure path (API error or Network error handled in ApiService.js)
+      console.error("Login failed:", result.error);
 
-        dispatch({
-          type: 'LOGIN_SUCCESS',
-          payload: { user, token },
-        });
-
-        return { success: true, data: { user, token } };
-      } else {
-        const errorMessage = result.data?.message || 'Login failed';
-        dispatch({
-          type: 'LOGIN_FAILURE',
-          payload: errorMessage,
-        });
-        return { success: false, error: errorMessage };
-      }
-    } catch (error) {
-      const errorMessage = error.message || 'Login failed';
       dispatch({
         type: 'LOGIN_FAILURE',
-        payload: errorMessage,
+        // result.error contains the user-friendly network/API error message
+        payload: result.error,
       });
-      return { success: false, error: errorMessage };
+      return { success: false, error: result.error };
     }
   };
 
   const register = async (userData) => {
-    try {
-      dispatch({ type: 'SET_LOADING', payload: true });
+    dispatch({ type: 'LOGIN_START' }); // Use LOGIN_START for register loading state
 
-      const result = await apiService.register(userData);
+    const result = await authAPI.register(userData);
 
-      if (result.success && result.data.success) {
-        const { user, token } = result.data.data;
-
-        // Store encrypted data
-        encryptedStorage.setToken(token, { expires: 7 });
-        encryptedStorage.setUser(user, { expires: 7 });
-
-        dispatch({
-          type: 'LOGIN_SUCCESS',
-          payload: { user, token },
-        });
-
-        return { success: true, data: { user, token } };
-      } else {
-        const errorMessage = result.data?.message || 'Registration failed';
-        dispatch({ type: 'SET_LOADING', payload: false });
-        return { success: false, error: errorMessage };
-      }
-    } catch (error) {
-      const errorMessage = error.message || 'Registration failed';
+    if (result.success) {
+      // Assuming successful registration should show a success message or redirect.
       dispatch({ type: 'SET_LOADING', payload: false });
-      return { success: false, error: errorMessage };
-    }
-  };
+      return { success: true, data: result.data };
+    } else {
+      console.error("Registration failed:", result.error);
 
-  const logout = async () => {
-    try {
-      // Call logout API
-      await apiService.logout();
-    } catch (error) {
-      console.error('Logout API error:', error);
-    } finally {
-      // Always clear local data
-      storageUtils.clearAllStorage();
-      dispatch({ type: 'LOGOUT' });
-    }
-  };
-
-  const refreshAuthToken = async () => {
-    try {
-      const newToken = await authAPI.refreshToken()
       dispatch({
-        type: AUTH_ACTIONS.SET_AUTHENTICATED,
-        payload: {
-          user: state.user,
-          token: newToken,
-        },
-      })
-    } catch (error) {
-      console.error("Token refresh failed:", error)
-      logout()
+        type: 'LOGIN_FAILURE',
+        payload: result.error, // Display API or Network error
+      });
+      return { success: false, error: result.error };
     }
-  }
+  };
 
   const clearError = () => {
     dispatch({ type: 'CLEAR_ERROR' });
@@ -263,16 +182,13 @@ export const AuthProvider = ({ children }) => {
     getUserInitials: () => state.user?.initials || state.user?.name?.charAt(0) || "U",
   };
 
-  return (
-    <AuthContext.Provider value={value}>
-      {children}
-    </AuthContext.Provider>
-  );
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
 
+// Custom hook to use the AuthContext
 export const useAuth = () => {
   const context = useContext(AuthContext);
-  if (!context) {
+  if (context === undefined) {
     throw new Error('useAuth must be used within an AuthProvider');
   }
   return context;
