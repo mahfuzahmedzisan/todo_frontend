@@ -10,7 +10,7 @@ import NetworkStatus from "./components/common/NetworkStatus"
 import RouteGuard from "./components/routing/RouteGuard"
 
 // pages
-import Home from './pages/Home'
+import Home from './pages/frontend/Home'
 import Login from './pages/Login'
 import Register from './pages/Register'
 import DashboardPage from './pages/DashboardPage'
