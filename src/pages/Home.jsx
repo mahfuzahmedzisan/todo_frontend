@@ -3,6 +3,7 @@
 import { Link } from "react-router-dom"
 import { useAuth } from "../contexts/AuthContext"
 import PublicLayout from "../components/layout/PublicLayout"
+import Button from "../components/ui/Button"
 
 export default function Home() {
     const { user } = useAuth()
@@ -10,6 +11,8 @@ export default function Home() {
     return (
         <PublicLayout>
             <div className="relative overflow-hidden">
+
+                
                 {/* Hero Section */}
                 <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white">
                     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24">
